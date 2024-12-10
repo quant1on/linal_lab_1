@@ -1,6 +1,8 @@
 import typing as tp
 
-#юнит-тесты напишу к среде (ко всем своим методам) - Илья
+# юнит-тесты напишу к среде (ко всем своим методам) - Илья
+# все комментарии, сделанные через решетку - для отчета
+
 
 class csr_matrix:
     def __init__(  # конструктор (будет использоваться в юнит-тестах)
@@ -11,6 +13,17 @@ class csr_matrix:
         row_pointers: tp.List[int] = [],
         values: tp.List[float] = [],
     ) -> None:
+        """
+        Основной констуктор матриц разреженного-строчного типа хранения
+        (Для тестов)
+
+        :param n: Кол-во строк
+        :param m: Кол-во столбцов
+        :param values: Массив ненулевых элементов
+        :param colummn_indices: Массив индексов столбцов каждого элемента values
+        :param row_pointers: Массив индексов values, указывающих на начало каждой строки
+        :return: Экземпляр csr_matrix
+        """
         self.n = n
         self.m = m
         self.column_indices = column_indices
@@ -18,6 +31,11 @@ class csr_matrix:
         self.values = values
 
     def fill_from_input(self) -> None:  # метод для заполнения значений из потока ввода
+        """
+        Заполнить матрицу разреженного-строчного типа через построчный ввод
+
+        :return: None
+        """
         self.n, self.m = map(int, input().split())
         for i in range(self.n):
             temporary_row = list(map(float, input().split()))  # считываем ввод построчно и
@@ -38,11 +56,21 @@ class csr_matrix:
 
         self.row_pointers.append(len(self.values))  # фиксируем конец последней строки
 
-    def get_value(self, coordinates: tp.Tuple[int, int]) -> float:  # метод для получения значения по указанным координатам
+    def __getitem__(self, coordinates: tp.Tuple[int, int]) -> float:  # метод для получения значения по указанным координатам
+        """
+        Получить значение матрицы, стоящее на ячейке с координатами coordinates
+
+        :param coordinates: Координаты запрашиваемого значения (формат - пара чисел, Tuple)
+        :return: Значение по указанным координатам
+        """
         if self.n is None or self.m is None:
             raise AttributeError("Can't find value by coords for empty matrix")  # проверяем матрицу на пустоту
 
-        if (self.n < coordinates[0] or self.m < coordinates[1]) or (coordinates[0] < 0 or coordinates[1] < 0):
+        if (
+            (self.n < coordinates[0] or self.m < coordinates[1])
+            or (coordinates[0] < 0 or coordinates[1] < 0)
+            or len(coordinates) != 2
+        ):
             raise ValueError("Invalid coordinates")  # если координаты выходят за пределы матрицы или переданы отрицательные
 
         row_start, row_end = (
@@ -58,6 +86,11 @@ class csr_matrix:
         return 0.0  # если нет - значит, на этом месте стоит 0
 
     def get_matrix_trace(self) -> float:  # метод для получения следа матрицы
+        """
+        Получить след матрицы
+
+        :return: След матрицы
+        """
         if self.n is None or self.m is None:
             raise AttributeError("Can't find trace for empty matrix")  # проверяем матрицу на пустоту
 
@@ -68,7 +101,7 @@ class csr_matrix:
 
         trace = 0.0
         for i in range(1, self.n + 1):
-            trace += self.get_value((i, i))  # складываем все элементы на главной диагонали, используя метод get_value()
+            trace += self[i, i]  # складываем все элементы на главной диагонали, используя метод get_value()
 
         return trace
 
