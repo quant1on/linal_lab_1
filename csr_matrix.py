@@ -20,7 +20,7 @@ class csr_matrix:
         :param n: Кол-во строк
         :param m: Кол-во столбцов
         :param values: Массив ненулевых элементов
-        :param colummn_indices: Массив индексов столбцов каждого элемента values
+        :param column_indices: Массив индексов столбцов каждого элемента values
         :param row_pointers: Массив индексов values, указывающих на начало каждой строки
         :return: Экземпляр csr_matrix
         """
@@ -36,7 +36,20 @@ class csr_matrix:
 
         :return: None
         """
-        self.n, self.m = map(int, input().split())
+        inpt = list(input().split()) # записываем n и m
+
+        if len(inpt) > 2 or len(inpt) == 0:
+            raise ValueError("Invalid number of boundaries")
+        
+        if len(inpt) == 1:
+            self.n = int(inpt[0])
+            self.m = self.n
+        else:
+            self.n, self.m = map(int, inpt)
+
+        if self.m <= 0 or self.n <= 0:
+            raise ValueError("Invalid matrix boundaries")
+
         for i in range(self.n):
             temporary_row = list(map(float, input().split()))  # считываем ввод построчно и
             # создаем из строки массив
@@ -51,7 +64,7 @@ class csr_matrix:
                 if temporary_row[j] == 0:
                     continue
                 else:
-                    self.values.append(temporary_row[j])  # записываем только ненулевые значения
+                    self.values.append(float(temporary_row[j]))  # записываем только ненулевые значения
                     self.column_indices.append(j)
 
         self.row_pointers.append(len(self.values))  # фиксируем конец последней строки
@@ -63,7 +76,8 @@ class csr_matrix:
         :param matrix: Матрица, из которой нужно взять значения
         :return: None
         """
-        # буквально аналог функции fill_from_input, но только чтобы для тестов
+        # буквально аналог функции fill_from_input, но только для тестов
+        # так как сильно схожа с fill_from_input, тесты не нужны
         self.n, self.m = len(matrix), len(matrix[0])
 
         for i in range(self.n):
@@ -91,7 +105,13 @@ class csr_matrix:
         if self.n is None or self.m is None:
             raise AttributeError("Can't find value by coords for empty matrix")  # проверяем матрицу на пустоту
 
-        if (self.n < coordinates[0] or self.m < coordinates[1]) or (coordinates[0] < 0 or coordinates[1] < 0) or len(coordinates) != 2:
+        if (
+            len(coordinates) != 2
+            or not isinstance(coordinates[0], int)
+            or not isinstance(coordinates[1], int)
+            or (self.n < coordinates[0] or self.m < coordinates[1])
+            or (coordinates[0] <= 0 or coordinates[1] <= 0)
+        ):
             raise ValueError("Invalid coordinates")  # если координаты выходят за пределы матрицы или переданы отрицательные
 
         row_start, row_end = (
@@ -149,15 +169,21 @@ class csr_matrix:
             i_2 = row_start_2
             mtrx_sum.row_pointers.append(len(mtrx_sum.values))
             for j in range(self.m):
+
                 while i_1 < row_end_1 - 1 and j > self.column_indices[i_1]:
                     i_1 += 1
+
                 while i_2 < row_end_2 - 1 and j > other.column_indices[i_2]:
                     i_2 += 1
+
                 sum_ = 0.0
+
                 if i_1 < row_end_1 and self.column_indices[i_1] == j:
                     sum_ += self.values[i_1]
+
                 if i_2 < row_end_2 and other.column_indices[i_2] == j:
                     sum_ += other.values[i_2]
+
                 if sum_ != 0:
                     mtrx_sum.values.append(sum_)
                     mtrx_sum.column_indices.append(j)
@@ -197,6 +223,7 @@ class csr_matrix:
 
                     for k in range(self.m):
                         mul_ += self[i + 1, k + 1] * other[k + 1, j + 1]  # очень неоптимизированный способ, надо переделать
+                                                                          # уже не успеваем, оставляем так
 
                     if mul_ == 0:
                         continue
@@ -213,7 +240,7 @@ class csr_matrix:
 
         return self.__mul__(other)
 
-    def __repr__(self) -> str:  # метод для вывода экземпляра класса в обычном матричном виде (для относительно малых матриц)
+    def __str__(self) -> str:  # метод для вывода экземпляра класса в обычном матричном виде (для относительно малых матриц)
         if self.n is None or self.m is None:
             return ""
         matrix = ""
@@ -225,7 +252,7 @@ class csr_matrix:
 
         return matrix
 
-    def __eq__(self, other):
+    def __eq__(self, other): # метод сравнения (равенства) для адекватного assert'а в тестах
         if not isinstance(other, csr_matrix):
             raise AttributeError("Can't compare a matrix and a non-matrix")
 
