@@ -129,6 +129,36 @@ class csr_matrix:
                 # будут только индексы, большие данного
         return 0.0  # если не нашли нужный индекс столбца - значит, на этом месте стоит 0
 
+    def __setitem__(self, coordinates: tp.Tuple[int, int], value: float):
+        """
+        Метод для установки значения по указанным координатам
+        :param coordinates: Координаты для вставки или замены
+        :param value: вставляемое или заменяемое значение
+        """
+        if self.n is None or self.m is None:
+            raise AttributeError("Can't find value by coords for empty matrix")  # проверяем матрицу на пустоту
+        if (self.n < coordinates[0] or self.m < coordinates[1]) or (coordinates[0] < 0 or coordinates[1] < 0) or len(
+                coordinates) != 2:
+            raise ValueError(
+                "Invalid coordinates")  # если координаты выходят за пределы матрицы или переданы отрицательные
+        row_start, row_end = (
+            self.row_pointers[coordinates[0] - 1],
+            self.row_pointers[coordinates[0]],
+        )
+        i = row_start
+        for i in range(row_start, row_end):  # проверяем строку на наличие данного индекса столбца
+            if self.column_indices[i] == coordinates[1] - 1:
+                self.values[
+                    i] = value  # если нашли - устанавливаем значение, если ноль, то можно было бы сдвинуть, чтобы сохранить разряженность, но не будем для снижения асимптотической сложности
+                return
+            if self.column_indices[i] > coordinates[1] - 1:
+                break
+                #  если не нашли - вставляем значение и сдвигаем указатели
+        self.values.insert(i, value)
+        self.column_indices.insert(i, coordinates[1] - 1)
+        for k in range(coordinates[0], len(self.row_pointers)):
+            self.row_pointers[k] += 1
+
     def get_matrix_trace(self) -> float:  # метод для получения следа матрицы
         """
         Получить след матрицы
@@ -277,5 +307,124 @@ class csr_matrix:
 
         return True
 
-    def get_determinant(self) -> float:  # метод для получения детерминанта
-        pass
+    def swap_lines(self, line_a: int, line_b: int):
+        """
+        Метод для замены строк матрицы
+        :param line_a: индекс первой линии для замены
+        :param line_b: индекс второй линии для замены
+        """
+        if line_a > self.n or line_b > self.n or line_a < 0 or line_b < 0:
+            raise AttributeError("Invalid line index")
+        row1_start, row1_end = (
+            self.row_pointers[line_a - 1],
+            self.row_pointers[line_a],
+        )
+        row2_start, row2_end = (
+            self.row_pointers[line_b - 1],
+            self.row_pointers[line_b],
+        )
+        if (row1_end - row1_start) == 0 and (row2_end - row2_start) == 0:
+            return  # если обе строки пустые, то ничего менять не надо
+
+        section1 = self.values[row1_start:row1_end]
+        section2 = self.values[row2_start:row2_end]
+        section1_cols = self.column_indices[row1_start:row1_end]
+        section2_cols = self.column_indices[row2_start:row2_end]
+
+        # Определяем порядок индексов для корректного удаления и вставки
+        if row1_start > row2_start:
+            # Меняем порядок, чтобы сначала обработать второй участок
+            row1_start, row1_end, row2_start, row2_end = row2_start, row2_end, row1_start, row1_end
+            section1, section2 = section2, section1
+            section1_cols, section2_cols = section2_cols, section1_cols
+
+        # Удаление старых участков
+        del self.values[row2_start:row2_end]
+        del self.values[row1_start:row1_end]
+        del self.column_indices[row2_start:row2_end]
+        del self.column_indices[row1_start:row1_end]
+
+        # Вставка участков в правильном порядке
+        for i, value in enumerate(section2):
+            self.values.insert(row1_start + i, value)
+        for i, value in enumerate(section2_cols):
+            self.column_indices.insert(row1_start + i, value)
+        insertion_correction = (row1_end - row1_start) - (
+                    row2_end - row2_start)  # коррекция row_pointers для вставки второй строки относительно замены одной строку на другую
+        for i, value in enumerate(section1):
+            self.values.insert(row2_start + i - insertion_correction, value)
+        for i, value in enumerate(section1_cols):
+            self.column_indices.insert(row2_start + i - insertion_correction, value)
+
+        # коррекция ссылок на строки
+        diff = (row1_end - row1_start) - (row2_end - row2_start)
+        for i in range(line_a, line_b):
+            self.row_pointers[i] -= diff
+
+    def get_matrix_memory(self) -> tp.List[tp.List[float]]:
+        """
+        Создаём двумерный массив из разрежённой матрицы
+        :return: Матрица в виде двумерного массива
+        """
+        matrix = []
+        if self.n is None or self.m is None:
+            return matrix
+
+        for i in range(self.n):
+            row = []
+            for j in range(self.m):
+                row.append(self[i + 1, j + 1])
+            matrix.append(row)
+        return matrix
+
+    def get_determinant(self) -> float:
+        """
+        Вычисляет определитель матрицы методом Гаусса.
+        :return: Определитель матрицы
+        """
+        if self.n != self.m:
+            raise ValueError("The matrix is not square")
+        matrix = self.get_matrix_memory()
+        det = 1.0
+
+        for i in range(self.n):
+            # Поиск максимального элемента в текущем столбце для выбора ведущего элемента
+            max_row = i
+            for k in range(i, self.n):
+                if abs(matrix[k][i]) > abs(matrix[max_row][i]):
+                    max_row = k
+
+            # Если ведущий элемент ноль, то определитель равен нулю
+            if matrix[max_row][i] == 0:
+                return 0
+
+            # Меняем строки местами, если нужно
+            if max_row != i:
+                matrix[i], matrix[max_row] = matrix[max_row], matrix[i]
+                det *= -1  # Меняем знак определителя из-за перестановки строк
+
+            # Прямой ход метода Гаусса
+            for j in range(i + 1, self.n):
+                factor = matrix[j][i] / matrix[i][i]
+                for k in range(i, self.n):
+                    matrix[j][k] -= factor * matrix[i][k]
+
+            # Умножаем определитель на диагональный элемент
+            det *= matrix[i][i]
+        return det
+
+    def has_inverse(self) -> bool:
+        """
+        Определяет существование обратной матрицы для заданной квадратной матрицы.
+        :return: флаг существования обратной матрицы
+        """
+        if self.n != self.m:
+            return False
+        try:
+            determinant = self.get_determinant()
+            if round(determinant) == 0:
+                return False
+            else:
+                return True
+        except ValueError:
+            return False
