@@ -1,2 +1,5 @@
 .mypy_cache
 .vscode
+.pytest_cache
+__pycache__
+my.py

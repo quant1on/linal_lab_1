@@ -77,7 +77,7 @@ class csr_matrix:
                 if matrix[i][j] == 0:
                     continue
                 else:
-                    self.values.append(matrix[i][j])
+                    self.values.append(float(matrix[i][j]))
                     self.column_indices.append(j)
         self.row_pointers.append(len(self.values))
 
@@ -149,14 +149,14 @@ class csr_matrix:
             i_2 = row_start_2
             mtrx_sum.row_pointers.append(len(mtrx_sum.values))
             for j in range(self.m):
-                while j > self.column_indices[i_1] and i_1 < row_end_1 - 1:
+                while i_1 < row_end_1 - 1 and j > self.column_indices[i_1]:
                     i_1 += 1
-                while j > other.column_indices[i_2] and i_2 < row_end_2 - 1:
+                while i_2 < row_end_2 - 1 and j > other.column_indices[i_2]:
                     i_2 += 1
                 sum_ = 0.0
-                if self.column_indices[i_1] == j:
+                if i_1 < row_end_1 and self.column_indices[i_1] == j:
                     sum_ += self.values[i_1]
-                if other.column_indices[i_2] == j:
+                if i_2 < row_end_2 and other.column_indices[i_2] == j:
                     sum_ += other.values[i_2]
                 if sum_ != 0:
                     mtrx_sum.values.append(sum_)
@@ -224,6 +224,31 @@ class csr_matrix:
             matrix += "\n"
 
         return matrix
+
+    def __eq__(self, other):
+        if not isinstance(other, csr_matrix):
+            raise AttributeError("Can't compare a matrix and a non-matrix")
+
+        if self.n != other.n or self.m != other.m:
+            return False
+
+        if (
+            len(self.column_indices) != len(other.column_indices)
+            or len(self.values) != len(other.values)
+            or len(self.row_pointers) != len(other.row_pointers)
+        ):
+            return False
+
+        if not all(self.column_indices[i] == other.column_indices[i] for i in range(len(self.column_indices))):
+            return False
+
+        if not all(self.row_pointers[i] == other.row_pointers[i] for i in range(len(self.row_pointers))):
+            return False
+
+        if not all(float(self.values[i]) == float(other.values[i]) for i in range(len(self.values))):
+            return False
+
+        return True
 
     def get_determinant(self) -> float:  # метод для получения детерминанта
         pass
