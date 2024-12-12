@@ -401,13 +401,19 @@ class csr_matrix:
 
     def get_determinant(self) -> float:
         """
-        Вычисляет определитель матрицы методом Гаусса.
+        метод для округления детерминанта до 7 знаков после запятой
+        :return: детерминант, с точностью 7 знаков после запятой
+        """
+        rounded = round(self.get_raw_determinant(), 7)
+        return rounded
 
+    def get_raw_determinant(self) -> float:
+        """
+        Вычисляет определитель матрицы методом Гаусса.
         :return: Определитель матрицы
         """
         if self.n != self.m:
             raise ValueError("The matrix is not square")
-        
         matrix = self.get_matrix_memory()
         det = 1.0
 
@@ -440,14 +446,13 @@ class csr_matrix:
     def has_inverse(self) -> bool:
         """
         Определяет существование обратной матрицы для заданной квадратной матрицы.
-
         :return: флаг существования обратной матрицы
         """
         if self.n != self.m:
             return False
         try:
             determinant = self.get_determinant()
-            if round(determinant) == 0:
+            if determinant == 0:
                 return False
             else:
                 return True
