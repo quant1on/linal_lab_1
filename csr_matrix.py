@@ -132,15 +132,22 @@ class csr_matrix:
     def __setitem__(self, coordinates: tp.Tuple[int, int], value: float):
         """
         Метод для установки значения по указанным координатам
+        
         :param coordinates: Координаты для вставки или замены
         :param value: вставляемое или заменяемое значение
         """
         if self.n is None or self.m is None:
             raise AttributeError("Can't find value by coords for empty matrix")  # проверяем матрицу на пустоту
-        if (self.n < coordinates[0] or self.m < coordinates[1]) or (coordinates[0] < 0 or coordinates[1] < 0) or len(
-                coordinates) != 2:
-            raise ValueError(
-                "Invalid coordinates")  # если координаты выходят за пределы матрицы или переданы отрицательные
+        
+        if (
+            len(coordinates) != 2
+            or not isinstance(coordinates[0], int)
+            or not isinstance(coordinates[1], int)
+            or (self.n < coordinates[0] or self.m < coordinates[1])
+            or (coordinates[0] <= 0 or coordinates[1] <= 0)
+        ):
+            raise ValueError("Invalid coordinates")  # если координаты выходят за пределы матрицы или переданы отрицательные
+        
         row_start, row_end = (
             self.row_pointers[coordinates[0] - 1],
             self.row_pointers[coordinates[0]],
@@ -179,62 +186,70 @@ class csr_matrix:
 
         return trace
 
-    # комменты для отчета добавлю позже
     def __add__(self, other) -> tp.Self:  # перегрузка оператора сложения (для реализации метода сложения матриц)
+
         if not isinstance(other, csr_matrix):
-            raise AttributeError("Can't sum a matrix and a non-matrix type")
+            raise AttributeError("Can't sum a matrix and a non-matrix type") # проверка на типизацию
 
         if self.n != other.n or self.m != other.m:
-            raise AttributeError("Can't sum matrices of different sizes")
+            raise AttributeError("Can't sum matrices of different sizes") # проверка размерностей
 
-        mtrx_sum = csr_matrix(n=self.n, m=self.m)
-        for i in range(self.n):
+        mtrx_sum = csr_matrix(n=self.n, m=self.m) # сюда будем записывать значения суммы матриц
+        for i in range(self.n): # проходим по строкам
             row_start_1, row_end_1, row_start_2, row_end_2 = (
                 self.row_pointers[i],
                 self.row_pointers[i + 1],
                 other.row_pointers[i],
                 other.row_pointers[i + 1],
-            )
-            i_1 = row_start_1
-            i_2 = row_start_2
-            mtrx_sum.row_pointers.append(len(mtrx_sum.values))
-            for j in range(self.m):
+            ) # складываем поэлементно и построчно с помощью метода двух указателей
 
-                while i_1 < row_end_1 - 1 and j > self.column_indices[i_1]:
+            i_1 = row_start_1 # первый указатель (проходит по строке первой матрицы)
+            i_2 = row_start_2 # второй указатель (проходит по строке второй матрицы)
+
+            mtrx_sum.row_pointers.append(len(mtrx_sum.values)) # фиксируем конец предыдущей строки и начало текущей
+            
+            for j in range(self.m):
+                
+                # поддерживаем условие, индекс столбца указателя больше или равен текущему
+                while i_1 < row_end_1 - 1 and j > self.column_indices[i_1]: 
                     i_1 += 1
 
+                # то же самое
                 while i_2 < row_end_2 - 1 and j > other.column_indices[i_2]:
                     i_2 += 1
 
                 sum_ = 0.0
 
+                # если указатель совпал с рассматриваемым столбцом -> складываем
                 if i_1 < row_end_1 and self.column_indices[i_1] == j:
                     sum_ += self.values[i_1]
 
                 if i_2 < row_end_2 and other.column_indices[i_2] == j:
                     sum_ += other.values[i_2]
 
+                # записываем
                 if sum_ != 0:
                     mtrx_sum.values.append(sum_)
                     mtrx_sum.column_indices.append(j)
 
+        # фиксируем конец последней строки
         mtrx_sum.row_pointers.append(len(mtrx_sum.values))
 
         return mtrx_sum
 
-    # комменты для отчета добавлю позже
     def __mul__(
         self, other
     ) -> tp.Self:  # перегрузка оператора умножения (для реализации метода умножения матриц друг на друга и домножения на скаляр)
         if not isinstance(other, (csr_matrix, float, int)):
-            raise AttributeError("Invalid multiplication")
+            raise AttributeError("Invalid multiplication") # проверка типизации
 
         if isinstance(other, (float, int)):  # умножение на скаляр
-            mtrx_mul = csr_matrix(n=self.n, m=self.m)
+            mtrx_mul = csr_matrix(n=self.n, m=self.m) # создаем новый экземпляр матрицы
             if other == 0.0:
-                mtrx_mul.row_pointers = [0] * (self.n + 1)
+                mtrx_mul.row_pointers = [0] * (self.n + 1) # если скаляр нулевой -> все массивы пустые (кроме указателей строк)
             else:
-                mtrx_mul.column_indices = self.column_indices.copy()
+                # если же скаляр ненулевой -> создаем копии всех массивов изначальной матрицы и домножаем values на скаляр
+                mtrx_mul.column_indices = self.column_indices.copy() 
                 mtrx_mul.row_pointers = self.row_pointers.copy()
                 mtrx_mul.values = self.values.copy()
                 for i in range(len(self.values)):
@@ -242,24 +257,26 @@ class csr_matrix:
 
         else:  # умножение матриц
             if self.m != other.n:
-                raise AttributeError("Can't multiply matrices of non-compatible sizes")
+                raise AttributeError("Can't multiply matrices of non-compatible sizes") # проверка на размерность
 
-            mtrx_mul = csr_matrix(n=self.n, m=other.m)
+            mtrx_mul = csr_matrix(n=self.n, m=other.m) # создаем новую матрицу, соответствующую размерности произведения
 
-            for i in range(self.n):
-                mtrx_mul.row_pointers.append(len(mtrx_mul.values))
-                for j in range(other.m):
+            for i in range(self.n): # заполняем матрицу произведения поэлементно (здесь рассматриваем строку)
+
+                mtrx_mul.row_pointers.append(len(mtrx_mul.values)) # фиксируем границу предыдущей строки и начало текущей
+
+                for j in range(other.m): # здесь рассматриваем столбец матрицы умножения
                     mul_ = 0.0
 
                     for k in range(self.m):
-                        mul_ += self[i + 1, k + 1] * other[k + 1, j + 1]  # очень неоптимизированный способ, надо переделать
-                                                                          # уже не успеваем, оставляем так
-
-                    if mul_ == 0:
+                        mul_ += self[i + 1, k + 1] * other[k + 1, j + 1] # проходимся по строке левой матрицы и по столбцу
+                                                                         # правой -> вычисляем элемент матрицы произведения
+                    if mul_ == 0: # запись элемента в матрицу произведения
                         continue
                     else:
                         mtrx_mul.values.append(mul_)
                         mtrx_mul.column_indices.append(j)
+            # фиксируем границу последней строки
             mtrx_mul.row_pointers.append(len(mtrx_mul.values))
 
         return mtrx_mul
@@ -310,19 +327,23 @@ class csr_matrix:
     def swap_lines(self, line_a: int, line_b: int):
         """
         Метод для замены строк матрицы
+
         :param line_a: индекс первой линии для замены
         :param line_b: индекс второй линии для замены
         """
         if line_a > self.n or line_b > self.n or line_a < 0 or line_b < 0:
             raise AttributeError("Invalid line index")
+        
         row1_start, row1_end = (
             self.row_pointers[line_a - 1],
             self.row_pointers[line_a],
         )
+
         row2_start, row2_end = (
             self.row_pointers[line_b - 1],
             self.row_pointers[line_b],
         )
+
         if (row1_end - row1_start) == 0 and (row2_end - row2_start) == 0:
             return  # если обе строки пустые, то ничего менять не надо
 
@@ -364,6 +385,7 @@ class csr_matrix:
     def get_matrix_memory(self) -> tp.List[tp.List[float]]:
         """
         Создаём двумерный массив из разрежённой матрицы
+
         :return: Матрица в виде двумерного массива
         """
         matrix = []
@@ -380,10 +402,12 @@ class csr_matrix:
     def get_determinant(self) -> float:
         """
         Вычисляет определитель матрицы методом Гаусса.
+
         :return: Определитель матрицы
         """
         if self.n != self.m:
             raise ValueError("The matrix is not square")
+        
         matrix = self.get_matrix_memory()
         det = 1.0
 
@@ -416,6 +440,7 @@ class csr_matrix:
     def has_inverse(self) -> bool:
         """
         Определяет существование обратной матрицы для заданной квадратной матрицы.
+
         :return: флаг существования обратной матрицы
         """
         if self.n != self.m:

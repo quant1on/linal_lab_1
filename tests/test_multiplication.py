@@ -80,3 +80,15 @@ class GetMultiplicationTestCase(unittest.TestCase):
 
         a2 = "123"
         self.assertRaises(AttributeError, csr_matrix.__mul__, a1, a2)
+
+    def test_zero_scalar(self):
+        a1 = csr_matrix()
+
+        a1.fill_from_matrix(matrix=[
+            [1, 2, 3],
+            [4, 5, 6]
+        ])
+        
+        a2 = 0
+
+        self.assertEqual(a1 * a2, csr_matrix(n=2, m=3, row_pointers=[0, 0, 0]))
