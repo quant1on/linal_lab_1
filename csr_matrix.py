@@ -401,10 +401,10 @@ class csr_matrix:
 
     def get_determinant(self) -> float:
         """
-        метод для округления детерминанта до 7 знаков после запятой
-        :return: детерминант, с точностью 7 знаков после запятой
+        метод для округления детерминанта до 4 знаков после запятой
+        :return: детерминант, с точностью 4 знаков после запятой
         """
-        rounded = round(self.get_raw_determinant(), 7)
+        rounded = round(self.get_raw_determinant(), 4)
         return rounded
 
     def get_raw_determinant(self) -> float:
@@ -458,3 +458,42 @@ class csr_matrix:
                 return True
         except ValueError:
             return False
+
+
+def task1_1():
+    a = csr_matrix()
+    a.fill_from_input()
+    print(a.get_matrix_trace())
+
+def task1_2():
+    a = csr_matrix()
+    a.fill_from_input()
+    x, y = map(int, input().split())
+    print(a[x, y])
+
+def task2_1():
+    a, b = csr_matrix(), csr_matrix()
+    a.fill_from_input()
+    b.fill_from_input()
+    print(a + b)
+
+def task2_2():
+    a = csr_matrix()
+    a.fill_from_input()
+    b = float(input())
+    print(a * b)
+
+def task2_3():
+    a, b = csr_matrix(), csr_matrix()
+    a.fill_from_input()
+    b.fill_from_input()
+    print(a * b)
+
+def task3():
+    a = csr_matrix()
+    a.fill_from_input()
+    print(a.get_determinant())
+    if a.has_inverse():
+        print("да")
+    else:
+        print("нет")
